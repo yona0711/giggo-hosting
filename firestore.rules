@@ -52,6 +52,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /gigs/{gigId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /escrows/{escrowId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn()
+        && request.resource.data.gigId == resource.data.gigId
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.status is string;
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

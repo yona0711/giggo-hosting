@@ -37,6 +37,11 @@ class GigRepository {
   static const String _approveTeenAccountUrl =
       'https://us-central1-giggo-8a302.cloudfunctions.net/approveTeenAccount';
 
+  CollectionReference<Map<String, dynamic>> get _gigsCollection =>
+      _firestore.collection('gigs');
+  CollectionReference<Map<String, dynamic>> get _escrowsCollection =>
+      _firestore.collection('escrows');
+
   UserProfile? _currentUser;
 
   UserProfile? get currentUser => _currentUser;
@@ -418,13 +423,19 @@ class GigRepository {
 
   Future<void> fetchGigs() async {
     try {
-      final response = await _httpClient.get(Uri.parse('$baseUrl/api/gigs'));
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = jsonDecode(response.body) as List<dynamic>;
+      final snapshot = await _gigsCollection.get();
+      if (snapshot.docs.isNotEmpty) {
         _gigs
           ..clear()
           ..addAll(
-            decoded.cast<Map<String, dynamic>>().map(Gig.fromJson).toList(),
+            snapshot.docs
+                .map(
+                  (doc) => Gig.fromJson({
+                    ...doc.data(),
+                    'id': doc.id,
+                  }),
+                )
+                .toList(),
           );
       }
     } catch (_) {
@@ -434,19 +445,27 @@ class GigRepository {
 
   Future<Gig> addGig(Gig gig) async {
     try {
-      final response = await _httpClient.post(
-        Uri.parse('$baseUrl/api/gigs'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(gig.toJson()),
+      final docRef = _gigsCollection.doc();
+      final createdGig = Gig(
+        id: docRef.id,
+        title: gig.title,
+        description: gig.description,
+        category: gig.category,
+        price: gig.price,
+        providerName: gig.providerName,
+        location: gig.location,
+        minAge: gig.minAge,
+        requiresBackgroundCheck: gig.requiresBackgroundCheck,
+        isLateNight: gig.isLateNight,
       );
 
-      if (response.statusCode == 201) {
-        final createdGig = Gig.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
-        );
-        _gigs.insert(0, createdGig);
-        return createdGig;
-      }
+      await docRef.set({
+        ...createdGig.toJson(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _gigs.insert(0, createdGig);
+      return createdGig;
     } catch (_) {
       // Fall back below.
     }
@@ -461,15 +480,18 @@ class GigRepository {
 
   Future<void> fetchEscrows() async {
     try {
-      final response = await _httpClient.get(Uri.parse('$baseUrl/api/escrows'));
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = jsonDecode(response.body) as List<dynamic>;
+      final snapshot = await _escrowsCollection.get();
+      if (snapshot.docs.isNotEmpty) {
         _payments
           ..clear()
           ..addAll(
-            decoded
-                .cast<Map<String, dynamic>>()
-                .map(EscrowPayment.fromJson)
+            snapshot.docs
+                .map(
+                  (doc) => EscrowPayment.fromJson({
+                    ...doc.data(),
+                    'id': doc.id,
+                  }),
+                )
                 .toList(),
           );
       }
@@ -483,19 +505,21 @@ class GigRepository {
     required double amount,
   }) async {
     try {
-      final response = await _httpClient.post(
-        Uri.parse('$baseUrl/api/escrows'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'gigId': gigId, 'amount': amount}),
+      final docRef = _escrowsCollection.doc();
+      final payment = EscrowPayment(
+        id: docRef.id,
+        gigId: gigId,
+        amount: amount,
+        status: EscrowStatus.pendingFunding,
       );
 
-      if (response.statusCode == 201) {
-        final payment = EscrowPayment.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
-        );
-        _payments.insert(0, payment);
-        return payment;
-      }
+      await docRef.set({
+        ...payment.toJson(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _payments.insert(0, payment);
+      return payment;
     } catch (_) {
       // Fall back below.
     }
@@ -514,16 +538,9 @@ class GigRepository {
   Future<void> fundEscrow(String escrowId) async {
     final payment = _payments.firstWhere((p) => p.id == escrowId);
     try {
-      final response = await _httpClient.patch(
-        Uri.parse('$baseUrl/api/escrows/$escrowId/fund'),
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        payment.status = EscrowPayment.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
-        ).status;
-        return;
-      }
+      await _escrowsCollection.doc(escrowId).update({'status': 'funded'});
+      payment.status = EscrowStatus.funded;
+      return;
     } catch (_) {
       // Fall back below.
     }
@@ -534,16 +551,9 @@ class GigRepository {
   Future<void> releaseEscrow(String escrowId) async {
     final payment = _payments.firstWhere((p) => p.id == escrowId);
     try {
-      final response = await _httpClient.patch(
-        Uri.parse('$baseUrl/api/escrows/$escrowId/release'),
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        payment.status = EscrowPayment.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
-        ).status;
-        return;
-      }
+      await _escrowsCollection.doc(escrowId).update({'status': 'released'});
+      payment.status = EscrowStatus.released;
+      return;
     } catch (_) {
       // Fall back below.
     }
@@ -554,16 +564,9 @@ class GigRepository {
   Future<void> disputeEscrow(String escrowId) async {
     final payment = _payments.firstWhere((p) => p.id == escrowId);
     try {
-      final response = await _httpClient.patch(
-        Uri.parse('$baseUrl/api/escrows/$escrowId/dispute'),
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        payment.status = EscrowPayment.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
-        ).status;
-        return;
-      }
+      await _escrowsCollection.doc(escrowId).update({'status': 'disputed'});
+      payment.status = EscrowStatus.disputed;
+      return;
     } catch (_) {
       // Fall back below.
     }
