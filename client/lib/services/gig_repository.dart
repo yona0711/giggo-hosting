@@ -14,12 +14,14 @@ class SignUpResult {
     this.infoMessage,
     this.requiresParentApproval = false,
     this.childUid,
+    this.approvalToken,
   });
 
   final String? errorMessage;
   final String? infoMessage;
   final bool requiresParentApproval;
   final String? childUid;
+  final String? approvalToken;
 }
 
 class GigRepository {
@@ -34,6 +36,8 @@ class GigRepository {
   final String baseUrl;
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  static const String _createTeenApprovalTokenUrl =
+      'https://us-central1-giggo-8a302.cloudfunctions.net/createTeenApprovalToken';
   static const String _approveTeenAccountUrl =
       'https://us-central1-giggo-8a302.cloudfunctions.net/approveTeenAccount';
 
@@ -228,6 +232,59 @@ class GigRepository {
     );
   }
 
+  Future<(String?, String?)> _requestTeenApprovalToken({
+    required String childUid,
+    required String parentEmail,
+  }) async {
+    try {
+      final idToken = await _auth.currentUser?.getIdToken();
+      if (idToken == null) {
+        return (
+          null,
+          'Unable to initialize parent approval. Please try again.'
+        );
+      }
+
+      final response = await _httpClient.post(
+        Uri.parse(_createTeenApprovalTokenUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode({
+          'childUid': childUid,
+          'parentEmail': parentEmail,
+        }),
+      );
+
+      final payload = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (payload is Map<String, dynamic>) {
+          final token = payload['approvalToken'] as String?;
+          if (token != null && token.isNotEmpty) {
+            return (token, null);
+          }
+        }
+        return (
+          null,
+          'Unable to initialize parent approval. Please try again.'
+        );
+      }
+
+      if (payload is Map<String, dynamic>) {
+        return (
+          null,
+          (payload['message'] as String?) ??
+              'Unable to initialize parent approval.',
+        );
+      }
+
+      return (null, 'Unable to initialize parent approval.');
+    } catch (_) {
+      return (null, 'Unable to initialize parent approval.');
+    }
+  }
+
   Future<SignUpResult> signUp({
     required String name,
     required String email,
@@ -284,14 +341,37 @@ class GigRepository {
       });
 
       if (isTeen) {
+        final (approvalToken, tokenError) = await _requestTeenApprovalToken(
+          childUid: user.uid,
+          parentEmail: normalizedParentEmail,
+        );
+
+        if (tokenError != null || approvalToken == null) {
+          try {
+            await _firestore.collection('users').doc(user.uid).delete();
+          } catch (_) {
+            // best effort
+          }
+          try {
+            await user.delete();
+          } catch (_) {
+            // best effort
+          }
+          return SignUpResult(
+            errorMessage:
+                tokenError ?? 'Unable to initialize parent approval flow.',
+          );
+        }
+
         final childUid = user.uid;
         await _auth.signOut();
         _currentUser = null;
         return SignUpResult(
           requiresParentApproval: true,
           childUid: childUid,
+          approvalToken: approvalToken,
           infoMessage:
-              'Parent approval required. Share this account ID with your parent: $childUid',
+              'Parent approval required. Share the approval token with your parent.',
         );
       }
 
@@ -387,7 +467,7 @@ class GigRepository {
   }
 
   Future<String?> approveTeenAccount({
-    required String childUid,
+    required String approvalToken,
     required String parentEmail,
   }) async {
     try {
@@ -395,7 +475,7 @@ class GigRepository {
         Uri.parse(_approveTeenAccountUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'childUid': childUid.trim(),
+          'approvalToken': approvalToken.trim(),
           'parentEmail': parentEmail.trim().toLowerCase(),
         }),
       );

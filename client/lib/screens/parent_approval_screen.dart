@@ -13,13 +13,13 @@ class ParentApprovalScreen extends StatefulWidget {
 
 class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _childUidController = TextEditingController();
+  final _approvalTokenController = TextEditingController();
   final _parentEmailController = TextEditingController();
   bool _isSubmitting = false;
 
   @override
   void dispose() {
-    _childUidController.dispose();
+    _approvalTokenController.dispose();
     _parentEmailController.dispose();
     super.dispose();
   }
@@ -31,7 +31,7 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
 
     setState(() => _isSubmitting = true);
     final error = await widget.repository.approveTeenAccount(
-      childUid: _childUidController.text,
+      approvalToken: _approvalTokenController.text,
       parentEmail: _parentEmailController.text,
     );
     if (!mounted) {
@@ -72,19 +72,19 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Enter the teen Account ID from sign-up and the parent email used at registration.',
+                    'Enter the approval token from sign-up and the parent email used at registration.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    controller: _childUidController,
+                    controller: _approvalTokenController,
                     decoration: const InputDecoration(
-                      labelText: 'Teen account ID (UID)',
+                      labelText: 'Approval token',
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if ((value ?? '').trim().isEmpty) {
-                        return 'Account ID is required';
+                        return 'Approval token is required';
                       }
                       return null;
                     },

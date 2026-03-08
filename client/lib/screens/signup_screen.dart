@@ -153,7 +153,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
     }
 
-    if (result.requiresParentApproval && result.childUid != null) {
+    if (result.requiresParentApproval && result.approvalToken != null) {
       if (!mounted) {
         return;
       }
@@ -163,7 +163,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           return AlertDialog(
             title: const Text('Parent approval needed'),
             content: SelectableText(
-              'Share this account ID with your parent:\n\n${result.childUid}',
+              'Share this approval token with your parent:\n\n${result.approvalToken}',
             ),
             actions: [
               TextButton(
