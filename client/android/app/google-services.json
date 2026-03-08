@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "252429020972",
+    "project_id": "giggo-8a302",
+    "storage_bucket": "giggo-8a302.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:252429020972:android:2811778ed0452f19290689",
+        "android_client_info": {
+          "package_name": "com.example.giggo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCF1AhlTP7BB8ngaR7P93diyQrITL1PiyQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

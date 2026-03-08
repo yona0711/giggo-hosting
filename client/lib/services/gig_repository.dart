@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/escrow_payment.dart';
@@ -11,21 +13,29 @@ class SignUpResult {
     this.errorMessage,
     this.infoMessage,
     this.requiresParentApproval = false,
+    this.childUid,
   });
 
   final String? errorMessage;
   final String? infoMessage;
   final bool requiresParentApproval;
+  final String? childUid;
 }
 
 class GigRepository {
   GigRepository({
     http.Client? httpClient,
     this.baseUrl = 'http://localhost:4000',
-  }) : _httpClient = httpClient ?? http.Client();
+  })  : _httpClient = httpClient ?? http.Client(),
+        _auth = FirebaseAuth.instance,
+        _firestore = FirebaseFirestore.instance;
 
   final http.Client _httpClient;
   final String baseUrl;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+  static const String _approveTeenAccountUrl =
+      'https://us-central1-giggo-8a302.cloudfunctions.net/approveTeenAccount';
 
   UserProfile? _currentUser;
 
@@ -168,6 +178,51 @@ class GigRepository {
     return null;
   }
 
+  int _calculateAge(DateTime dateOfBirth) {
+    final now = DateTime.now();
+    var age = now.year - dateOfBirth.year;
+    final birthdayThisYear =
+        DateTime(now.year, dateOfBirth.month, dateOfBirth.day);
+    if (now.isBefore(birthdayThisYear)) {
+      age -= 1;
+    }
+    return age;
+  }
+
+  UserProfile _profileFromFirestore(
+    Map<String, dynamic> json, {
+    required String fallbackName,
+  }) {
+    final parsedAge = (json['age'] as num?)?.toInt() ?? 18;
+    final approvalStatus = (json['approvalStatus'] as String?) ?? 'approved';
+    final skills = (json['skills'] as List?)
+            ?.whereType<String>()
+            .where((item) => item.trim().isNotEmpty)
+            .toList() ??
+        <String>['Getting Started'];
+
+    final isTeen = parsedAge >= 13 && parsedAge <= 17;
+    return UserProfile(
+      name: (json['name'] as String?)?.trim().isNotEmpty == true
+          ? (json['name'] as String).trim()
+          : fallbackName,
+      age: parsedAge,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      completedGigs: (json['completedGigs'] as num?)?.toInt() ?? 0,
+      bio: (json['bio'] as String?)?.trim().isNotEmpty == true
+          ? (json['bio'] as String).trim()
+          : 'New to Giggo.',
+      isVerified: (json['isVerified'] as bool?) ?? false,
+      backgroundChecked: (json['backgroundChecked'] as bool?) ?? false,
+      skills: skills,
+      hasParentMonitoring: (json['hasParentMonitoring'] as bool?) ?? isTeen,
+      parentPayoutApproval: (json['parentPayoutApproval'] as bool?) ??
+          (isTeen && approvalStatus == 'approved'),
+      payoutLimitPerWeek:
+          (json['payoutLimitPerWeek'] as num?)?.toInt() ?? (isTeen ? 250 : 0),
+    );
+  }
+
   Future<SignUpResult> signUp({
     required String name,
     required String email,
@@ -175,43 +230,101 @@ class GigRepository {
     required DateTime dateOfBirth,
     String? parentEmail,
   }) async {
-    try {
-      final response = await _httpClient.post(
-        Uri.parse('$baseUrl/api/auth/signup'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'password': password,
-          'dateOfBirth': dateOfBirth.toIso8601String(),
-          'parentEmail': parentEmail,
-        }),
-      );
+    final normalizedName = name.trim();
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedParentEmail = (parentEmail ?? '').trim().toLowerCase();
+    final age = _calculateAge(dateOfBirth);
+    final isTeen = age >= 13 && age <= 17;
 
-      if (response.statusCode == 201) {
-        final userJson = jsonDecode(response.body) as Map<String, dynamic>;
-        _currentUser = UserProfile.fromAuthPayload(userJson);
-        return const SignUpResult();
+    if (age < 13) {
+      return const SignUpResult(
+        errorMessage: 'Minimum age to create an account is 13.',
+      );
+    }
+
+    if (isTeen && !normalizedParentEmail.contains('@')) {
+      return const SignUpResult(
+        errorMessage: 'Parent email is required for ages 13–17.',
+      );
+    }
+
+    if (normalizedParentEmail.isNotEmpty &&
+        normalizedParentEmail == normalizedEmail) {
+      return const SignUpResult(
+        errorMessage: 'Parent email must be different from account email.',
+      );
+    }
+
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+      final user = credential.user;
+
+      if (user == null) {
+        return const SignUpResult(errorMessage: 'Unable to create account.');
       }
 
-      if (response.statusCode == 202) {
-        return const SignUpResult(
+      final approvalStatus = isTeen ? 'pending' : 'approved';
+
+      await _firestore.collection('users').doc(user.uid).set({
+        'name': normalizedName,
+        'email': normalizedEmail,
+        'age': age,
+        'dateOfBirth': Timestamp.fromDate(dateOfBirth),
+        'parentEmail': isTeen ? normalizedParentEmail : '',
+        'approvalStatus': approvalStatus,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (isTeen) {
+        final childUid = user.uid;
+        await _auth.signOut();
+        _currentUser = null;
+        return SignUpResult(
           requiresParentApproval: true,
+          childUid: childUid,
           infoMessage:
-              'Parent approval required. Ask your parent to check their email to approve your account.',
+              'Parent approval required. Share this account ID with your parent: $childUid',
         );
       }
 
-      final error = jsonDecode(response.body) as Map<String, dynamic>;
-      return SignUpResult(
-        errorMessage:
-            (error['message'] as String?) ?? 'Unable to create account.',
+      _currentUser = _profileFromFirestore(
+        {
+          'name': normalizedName,
+          'age': age,
+          'approvalStatus': approvalStatus,
+        },
+        fallbackName: normalizedName,
+      );
+
+      return const SignUpResult();
+    } on FirebaseAuthException catch (error) {
+      switch (error.code) {
+        case 'email-already-in-use':
+          return const SignUpResult(
+            errorMessage: 'An account already exists for this email.',
+          );
+        case 'invalid-email':
+          return const SignUpResult(
+            errorMessage: 'Please provide a valid email.',
+          );
+        case 'weak-password':
+          return const SignUpResult(
+            errorMessage: 'Password must be at least 6 characters.',
+          );
+        default:
+          return SignUpResult(
+            errorMessage: error.message ?? 'Unable to create account.',
+          );
+      }
+    } on FirebaseException {
+      return const SignUpResult(
+        errorMessage: 'Unable to save account profile. Please try again.',
       );
     } catch (_) {
-      return const SignUpResult(
-        errorMessage:
-            'Cannot reach server. Please make sure backend is running.',
-      );
+      return const SignUpResult(errorMessage: 'Unable to create account.');
     }
   }
 
@@ -220,26 +333,84 @@ class GigRepository {
     required String password,
   }) async {
     try {
-      final response = await _httpClient.post(
-        Uri.parse('$baseUrl/api/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email.trim().toLowerCase(),
+        password: password,
       );
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final userJson = jsonDecode(response.body) as Map<String, dynamic>;
-        _currentUser = UserProfile.fromAuthPayload(userJson);
-        return null;
+      final user = credential.user;
+      if (user == null) {
+        return 'Unable to sign in.';
       }
 
-      final error = jsonDecode(response.body) as Map<String, dynamic>;
-      return (error['message'] as String?) ?? 'Unable to sign in.';
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final profileJson = doc.data() ?? <String, dynamic>{};
+      final approvalStatus = (profileJson['approvalStatus'] as String?) ??
+          (profileJson['age'] is num &&
+                  (profileJson['age'] as num).toInt() >= 13 &&
+                  (profileJson['age'] as num).toInt() <= 17
+              ? 'pending'
+              : 'approved');
+
+      if (approvalStatus == 'pending') {
+        await _auth.signOut();
+        _currentUser = null;
+        return 'Parent approval is still pending. Please check parent email.';
+      }
+
+      _currentUser = _profileFromFirestore(
+        profileJson,
+        fallbackName: user.email?.split('@').first ?? 'Giggo User',
+      );
+      return null;
+    } on FirebaseAuthException catch (error) {
+      switch (error.code) {
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          return 'Invalid email or password.';
+        case 'invalid-email':
+          return 'Please provide a valid email.';
+        default:
+          return error.message ?? 'Unable to sign in.';
+      }
+    } on FirebaseException {
+      return 'Unable to load account profile.';
     } catch (_) {
-      return 'Cannot reach server. Please make sure backend is running.';
+      return 'Unable to sign in.';
     }
   }
 
-  void logout() {
+  Future<String?> approveTeenAccount({
+    required String childUid,
+    required String parentEmail,
+  }) async {
+    try {
+      final response = await _httpClient.post(
+        Uri.parse(_approveTeenAccountUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'childUid': childUid.trim(),
+          'parentEmail': parentEmail.trim().toLowerCase(),
+        }),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return null;
+      }
+
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        return (body['message'] as String?) ?? 'Unable to approve account.';
+      }
+      return 'Unable to approve account.';
+    } catch (_) {
+      return 'Unable to reach approval service.';
+    }
+  }
+
+  Future<void> logout() async {
+    await _auth.signOut();
     _currentUser = null;
   }
 

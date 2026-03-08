@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/gig_repository.dart';
+import 'parent_approval_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -62,6 +63,14 @@ class _LoginScreenState extends State<LoginScreen> {
           repository: widget.repository,
           onAuthenticated: widget.onAuthenticated,
         ),
+      ),
+    );
+  }
+
+  Future<void> _openParentApproval() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ParentApprovalScreen(repository: widget.repository),
       ),
     );
   }
@@ -128,6 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextButton(
                     onPressed: _isLoading ? null : _openSignUp,
                     child: const Text("Don't have an account? Sign up"),
+                  ),
+                  TextButton(
+                    onPressed: _isLoading ? null : _openParentApproval,
+                    child: const Text('Parent: Approve teen account'),
                   ),
                 ],
               ),

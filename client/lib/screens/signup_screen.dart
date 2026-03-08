@@ -146,8 +146,38 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (result.infoMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.infoMessage!)),
+        SnackBar(
+          content: Text(result.infoMessage!),
+          duration: const Duration(seconds: 8),
+        ),
       );
+    }
+
+    if (result.requiresParentApproval && result.childUid != null) {
+      if (!mounted) {
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Parent approval needed'),
+            content: SelectableText(
+              'Share this account ID with your parent:\n\n${result.childUid}',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    if (!mounted) {
+      return;
     }
 
     if (!result.requiresParentApproval) {
