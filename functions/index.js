@@ -6,6 +6,10 @@ const sgMail = require('@sendgrid/mail');
 
 admin.initializeApp();
 
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const CREATE_TOKEN_MAX_ATTEMPTS = 10;
+const APPROVE_MAX_ATTEMPTS = 10;
+
 function sha256(input) {
   return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
 }
@@ -17,6 +21,84 @@ function extractBearerToken(req) {
   }
   const token = authHeader.slice(7).trim();
   return token.length > 0 ? token : null;
+}
+
+function getRequestIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').trim();
+  if (forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return String(req.ip || req.connection?.remoteAddress || 'unknown').trim();
+}
+
+async function enforceRateLimit({ req, endpoint, maxAttempts }) {
+  const ip = getRequestIp(req);
+  const key = sha256(`${endpoint}:${ip}`);
+  const ref = admin.firestore().collection('_rateLimits').doc(key);
+  const nowMillis = Date.now();
+  let blocked = false;
+  let retryAfterSeconds = 0;
+
+  await admin.firestore().runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+
+    if (!snapshot.exists) {
+      transaction.set(ref, {
+        endpoint,
+        ip,
+        count: 1,
+        resetAt: admin.firestore.Timestamp.fromMillis(
+          nowMillis + RATE_LIMIT_WINDOW_MS,
+        ),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    const data = snapshot.data() || {};
+    const count = Number(data.count || 0);
+    const resetAt = data.resetAt;
+    const resetAtMillis =
+      resetAt && typeof resetAt.toMillis === 'function'
+        ? resetAt.toMillis()
+        : nowMillis + RATE_LIMIT_WINDOW_MS;
+
+    if (resetAtMillis <= nowMillis) {
+      transaction.set(
+        ref,
+        {
+          endpoint,
+          ip,
+          count: 1,
+          resetAt: admin.firestore.Timestamp.fromMillis(
+            nowMillis + RATE_LIMIT_WINDOW_MS,
+          ),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      return;
+    }
+
+    if (count >= maxAttempts) {
+      blocked = true;
+      retryAfterSeconds = Math.max(1, Math.ceil((resetAtMillis - nowMillis) / 1000));
+      return;
+    }
+
+    transaction.set(
+      ref,
+      {
+        endpoint,
+        ip,
+        count: count + 1,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+
+  return { blocked, retryAfterSeconds };
 }
 
 async function sendParentApprovalEmail({ parentEmail, approvalToken }) {
@@ -61,6 +143,19 @@ exports.createTeenApprovalToken = onRequest(
   async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ message: 'Method not allowed.' });
+    return;
+  }
+
+  const rateLimit = await enforceRateLimit({
+    req,
+    endpoint: 'createTeenApprovalToken',
+    maxAttempts: CREATE_TOKEN_MAX_ATTEMPTS,
+  });
+  if (rateLimit.blocked) {
+    res.status(429).json({
+      message: 'Too many attempts. Please try again later.',
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
     return;
   }
 
@@ -147,6 +242,19 @@ exports.approveTeenAccount = onRequest({ cors: true }, async (req, res) => {
 
   if (!approvalToken || !parentEmail) {
     res.status(400).json({ message: 'approvalToken and parentEmail are required.' });
+    return;
+  }
+
+  const rateLimit = await enforceRateLimit({
+    req,
+    endpoint: 'approveTeenAccount',
+    maxAttempts: APPROVE_MAX_ATTEMPTS,
+  });
+  if (rateLimit.blocked) {
+    res.status(429).json({
+      message: 'Too many attempts. Please try again later.',
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
     return;
   }
 
