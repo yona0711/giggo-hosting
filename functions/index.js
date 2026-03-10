@@ -53,7 +53,12 @@ async function sendParentApprovalEmail({ parentEmail, approvalToken }) {
   };
 }
 
-exports.createTeenApprovalToken = onRequest({ cors: true }, async (req, res) => {
+exports.createTeenApprovalToken = onRequest(
+  {
+    cors: true,
+    secrets: ['SENDGRID_API_KEY', 'PARENT_APPROVAL_FROM_EMAIL'],
+  },
+  async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ message: 'Method not allowed.' });
     return;
@@ -128,7 +133,8 @@ exports.createTeenApprovalToken = onRequest({ cors: true }, async (req, res) => 
     logger.error('createTeenApprovalToken failed', error);
     res.status(500).json({ message: 'Unable to initialize parent approval token.' });
   }
-});
+  },
+);
 
 exports.approveTeenAccount = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== 'POST') {
