@@ -18,6 +18,20 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
   bool _isSubmitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    final params = Uri.base.queryParameters;
+    final token = (params['token'] ?? '').trim();
+    final email = (params['email'] ?? '').trim();
+    if (token.isNotEmpty) {
+      _approvalTokenController.text = token;
+    }
+    if (email.isNotEmpty) {
+      _parentEmailController.text = email;
+    }
+  }
+
+  @override
   void dispose() {
     _approvalTokenController.dispose();
     _parentEmailController.dispose();
@@ -72,7 +86,7 @@ class _ParentApprovalScreenState extends State<ParentApprovalScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Enter the approval token from sign-up and the parent email used at registration.',
+                    'Use the approval link from email, or enter token and parent email manually.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),

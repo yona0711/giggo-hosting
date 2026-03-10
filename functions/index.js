@@ -2,6 +2,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const logger = require('firebase-functions/logger');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const sgMail = require('@sendgrid/mail');
 
 admin.initializeApp();
 
@@ -16,6 +17,40 @@ function extractBearerToken(req) {
   }
   const token = authHeader.slice(7).trim();
   return token.length > 0 ? token : null;
+}
+
+async function sendParentApprovalEmail({ parentEmail, approvalToken }) {
+  const sendgridApiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.PARENT_APPROVAL_FROM_EMAIL;
+  const appBaseUrl =
+    process.env.PARENT_APPROVAL_BASE_URL || 'https://giggo-8a302.web.app';
+
+  const approvalLink = `${appBaseUrl.replace(/\/$/, '')}/?token=${encodeURIComponent(approvalToken)}&email=${encodeURIComponent(parentEmail)}`;
+
+  if (!sendgridApiKey || !fromEmail) {
+    logger.warn('SendGrid env vars not set. Returning approval link without sending email.', {
+      approvalLink,
+      parentEmail,
+    });
+    return {
+      sent: false,
+      approvalLink,
+    };
+  }
+
+  sgMail.setApiKey(sendgridApiKey);
+  await sgMail.send({
+    to: parentEmail,
+    from: fromEmail,
+    subject: 'Giggo parent approval request',
+    text: `A teen account needs your approval. Open this link to approve: ${approvalLink}`,
+    html: `<p>A teen account needs your approval.</p><p><a href="${approvalLink}">Approve teen account</a></p><p>If the button doesn't work, use this link: ${approvalLink}</p>`,
+  });
+
+  return {
+    sent: true,
+    approvalLink,
+  };
 }
 
 exports.createTeenApprovalToken = onRequest({ cors: true }, async (req, res) => {
@@ -78,9 +113,16 @@ exports.createTeenApprovalToken = onRequest({ cors: true }, async (req, res) => 
       approvalTokenIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    const mailResult = await sendParentApprovalEmail({
+      parentEmail,
+      approvalToken,
+    });
+
     res.json({
       approvalToken,
       expiresAt: expiresAt.toISOString(),
+      emailSent: mailResult.sent,
+      approvalLink: mailResult.approvalLink,
     });
   } catch (error) {
     logger.error('createTeenApprovalToken failed', error);
