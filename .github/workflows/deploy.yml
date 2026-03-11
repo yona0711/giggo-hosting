@@ -39,12 +39,12 @@ jobs:
           cd client
           flutter build web
 
-      - name: Set Firebase project alias
+      - name: Set Firebase project ID
         run: |
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            echo "FIREBASE_PROJECT_ALIAS=prod" >> "$GITHUB_ENV"
+            echo "FIREBASE_PROJECT_ID=giggo-8a302" >> "$GITHUB_ENV"
           else
-            echo "FIREBASE_PROJECT_ALIAS=staging" >> "$GITHUB_ENV"
+            echo "FIREBASE_PROJECT_ID=giggo-staging" >> "$GITHUB_ENV"
           fi
 
       - name: Validate Firebase token
@@ -55,4 +55,4 @@ jobs:
           fi
 
       - name: Deploy to Firebase Hosting
-        run: npx --yes firebase-tools@latest deploy -P "$FIREBASE_PROJECT_ALIAS" --only hosting --non-interactive --debug --token "${{ secrets.FIREBASE_TOKEN }}"
+        run: npx --yes firebase-tools@latest deploy -P "$FIREBASE_PROJECT_ID" --only hosting --non-interactive --debug --token "${{ secrets.FIREBASE_TOKEN }}"
