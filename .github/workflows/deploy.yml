@@ -47,5 +47,12 @@ jobs:
             echo "FIREBASE_PROJECT_ALIAS=staging" >> "$GITHUB_ENV"
           fi
 
-      - name: Deploy to Firebase (hosting + firestore + functions)
-        run: npx firebase-tools deploy -P "$FIREBASE_PROJECT_ALIAS" --token "${{ secrets.FIREBASE_TOKEN }}"
+      - name: Validate Firebase token
+        run: |
+          if [ -z "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            echo "FIREBASE_TOKEN secret is missing. Add it in GitHub repo settings: Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Deploy to Firebase Hosting
+        run: npx --yes firebase-tools@latest deploy -P "$FIREBASE_PROJECT_ALIAS" --only hosting --non-interactive --debug --token "${{ secrets.FIREBASE_TOKEN }}"
