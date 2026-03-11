@@ -47,14 +47,12 @@ jobs:
             echo "FIREBASE_PROJECT_ID=giggo-staging" >> "$GITHUB_ENV"
           fi
 
-      - name: Select auth mode
+      - name: Require service account credentials
         run: |
           if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
             echo "FIREBASE_AUTH_MODE=service-account" >> "$GITHUB_ENV"
-          elif [ -n "${{ secrets.FIREBASE_TOKEN }}" ]; then
-            echo "FIREBASE_AUTH_MODE=token" >> "$GITHUB_ENV"
           else
-            echo "Missing auth secret. Add FIREBASE_SERVICE_ACCOUNT (recommended) or FIREBASE_TOKEN in GitHub Actions secrets."
+            echo "Missing FIREBASE_SERVICE_ACCOUNT secret. Add it in GitHub repo settings: Secrets and variables > Actions."
             exit 1
           fi
 
@@ -66,9 +64,4 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=$SA_KEY_PATH" >> "$GITHUB_ENV"
 
       - name: Deploy to Firebase Hosting
-        run: |
-          if [ "$FIREBASE_AUTH_MODE" = "service-account" ]; then
-            npx --yes firebase-tools@latest deploy -P "$FIREBASE_PROJECT_ID" --only hosting --non-interactive --debug
-          else
-            npx --yes firebase-tools@latest deploy -P "$FIREBASE_PROJECT_ID" --only hosting --non-interactive --debug --token "${{ secrets.FIREBASE_TOKEN }}"
-          fi
+        run: npx --yes firebase-tools@latest deploy -P "$FIREBASE_PROJECT_ID" --only hosting --non-interactive --debug
