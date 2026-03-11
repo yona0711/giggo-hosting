@@ -1,0 +1,51 @@
+name: Build and Deploy Firebase
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Flutter pub get
+        run: |
+          cd client
+          flutter pub get
+
+      - name: Flutter analyze
+        run: |
+          cd client
+          flutter analyze
+
+      - name: Flutter build web
+        run: |
+          cd client
+          flutter build web
+
+      - name: Set Firebase project alias
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "FIREBASE_PROJECT_ALIAS=prod" >> "$GITHUB_ENV"
+          else
+            echo "FIREBASE_PROJECT_ALIAS=staging" >> "$GITHUB_ENV"
+          fi
+
+      - name: Deploy to Firebase (hosting + firestore + functions)
+        run: npx firebase-tools deploy -P "$FIREBASE_PROJECT_ALIAS" --token "${{ secrets.FIREBASE_TOKEN }}"
