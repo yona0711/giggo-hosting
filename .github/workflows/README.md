@@ -2,16 +2,24 @@
 
 This repo uses `.github/workflows/deploy.yml` for branch-based deployment:
 
-- `develop` → Firebase alias `staging` (`giggo-staging`)
-- `main` → Firebase alias `prod` (`giggo-8a302`)
+- `develop` → Firebase project `giggo-staging`
+- `main` → Firebase project `giggo-8a302`
 
-## Required GitHub Secret
+## Required GitHub Secret (Recommended)
 
-Create this repository secret:
+Create this repository secret (preferred):
+
+- `FIREBASE_SERVICE_ACCOUNT`
+
+Value should be the full JSON key content for a Google service account with Firebase Hosting deploy permissions.
+
+## Optional Fallback Secret
+
+If you still use token-based auth, the workflow also supports:
 
 - `FIREBASE_TOKEN`
 
-Generate it locally with:
+Generate token locally with:
 
 ```bash
 firebase login:ci
@@ -26,4 +34,4 @@ Then add it in GitHub:
 1. Runs `flutter pub get`
 2. Runs `flutter analyze`
 3. Builds Flutter web (`client/build/web`)
-4. Deploys Firebase using `.firebaserc` alias mapping
+4. Deploys Firebase Hosting to the branch-mapped project ID
