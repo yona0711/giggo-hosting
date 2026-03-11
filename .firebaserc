@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "giggo-8a302"
+    "default": "giggo-8a302",
+    "prod": "giggo-8a302",
+    "staging": "giggo-staging"
   }
 }
