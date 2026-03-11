@@ -7,27 +7,11 @@ This repo uses `.github/workflows/deploy.yml` for branch-based deployment:
 
 ## Required GitHub Secret (Recommended)
 
-Create this repository secret (preferred):
+Create this repository secret:
 
 - `FIREBASE_SERVICE_ACCOUNT`
 
 Value should be the full JSON key content for a Google service account with Firebase Hosting deploy permissions.
-
-## Optional Fallback Secret
-
-If you still use token-based auth, the workflow also supports:
-
-- `FIREBASE_TOKEN`
-
-Generate token locally with:
-
-```bash
-firebase login:ci
-```
-
-Then add it in GitHub:
-
-- Repo → Settings → Secrets and variables → Actions → New repository secret
 
 ## What the workflow does
 
