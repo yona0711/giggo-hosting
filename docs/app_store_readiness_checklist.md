@@ -79,8 +79,8 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 ## Mobile Release Build
 
 - [x] Flutter app builds/runs on web/debug.
-- [ ] Confirm Android package name and app label.
-- [ ] Confirm iOS bundle identifier and app display name.
+- [ ] Confirm Android package name and app label. App label is `Giggo`; package still needs a production Firebase Android app before changing from `com.example.giggo`.
+- [ ] Confirm iOS bundle identifier and app display name. Display name is `Giggo`; bundle identifier still needs a production Firebase iOS app before changing from `com.example.giggo`.
 - [ ] Replace default launcher icons with final Giggo icon.
 - [ ] Replace default splash/launch screens with final Giggo branding.
 - [ ] Configure Android release signing.
