@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: giggo-api
+    env: node
+    rootDir: server
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_BASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: GIGGO_STORE_DRIVER
+        value: firestore
+      - key: GIGGO_STORE_COLLECTION
+        value: _serverState
+      - key: GIGGO_STORE_DOCUMENT
+        value: runtime

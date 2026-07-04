@@ -1,5 +1,12 @@
 node_modules/
 dist/
 .env
+server/src/data/runtime-store.json
+*.log
+.agents/
+skills-lock.json
+client/.flutter-plugins
+client/android/build/
+client/build/
 .DS_Store
 .firebase/

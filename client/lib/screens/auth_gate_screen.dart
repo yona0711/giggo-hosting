@@ -23,10 +23,20 @@ class _AuthGateScreenState extends State<AuthGateScreen> {
     setState(() => _isAuthenticated = true);
   }
 
+  void _handleLoggedOut() {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _isAuthenticated = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isAuthenticated && widget.repository.isLoggedIn) {
-      return RootShellScreen(repository: widget.repository);
+      return RootShellScreen(
+        repository: widget.repository,
+        onLoggedOut: _handleLoggedOut,
+      );
     }
 
     return LoginScreen(

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../services/gig_repository.dart';
+import 'parent_signup_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({
@@ -25,6 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _dobController = TextEditingController();
   bool _isLoading = false;
+  bool _isBusinessAccount = false;
   DateTime? _selectedDateOfBirth;
 
   @override
@@ -94,6 +96,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         setState(() {
                           _selectedDateOfBirth = draftDate;
                           _dobController.text = _formattedDob ?? '';
+                          if (_isTeenSigner) {
+                            _isBusinessAccount = false;
+                          }
                         });
                         Navigator.of(context).pop();
                       },
@@ -130,6 +135,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       dateOfBirth: _selectedDateOfBirth!,
+      isBusinessAccount: _isBusinessAccount,
       parentEmail: _isTeenSigner ? _parentEmailController.text.trim() : null,
     );
     if (!mounted) {
@@ -144,6 +150,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
+    if (result.requiresParentApproval && result.approvalToken != null) {
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => ParentSignUpScreen(
+            repository: widget.repository,
+            parentEmail: _parentEmailController.text.trim(),
+            approvalToken: result.approvalToken!,
+            childName: _nameController.text.trim(),
+            onAuthenticated: widget.onAuthenticated,
+          ),
+        ),
+      );
+      return;
+    }
+
     if (result.infoMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -153,36 +174,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
     }
 
-    if (result.requiresParentApproval && result.approvalToken != null) {
-      if (!mounted) {
-        return;
-      }
-      await showDialog<void>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Parent approval needed'),
-            content: SelectableText(
-              'Share this approval token with your parent:\n\n${result.approvalToken}',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-
     if (!mounted) {
       return;
     }
 
-    if (!result.requiresParentApproval) {
-      widget.onAuthenticated();
-    }
+    widget.onAuthenticated();
     Navigator.of(context).pop();
   }
 
@@ -271,11 +267,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ],
                   if (_isTeenSigner) ...[
                     const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'After the child profile is saved, pass the phone to a parent so they can create or log into their own parent account.',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _parentEmailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        labelText: 'Parent email (required for ages 13–17)',
+                        labelText: 'Parent email (required for ages 13-17)',
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
@@ -291,9 +301,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'A parent approval request will be sent before account activation.',
+                      'The parent account will approve this child account and later approve service requests.',
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  Card(
+                    child: SwitchListTile.adaptive(
+                      value: _isBusinessAccount,
+                      onChanged: _isTeenSigner
+                          ? null
+                          : (value) {
+                              setState(() => _isBusinessAccount = value);
+                            },
+                      title: const Text('Use Giggo for my service business'),
+                      subtitle: Text(
+                        _isTeenSigner
+                            ? 'Provider tools are available after parent approval and safety review.'
+                            : _isBusinessAccount
+                                ? 'You will get provider tools like a service page and creator hub UI.'
+                                : 'You will get the client UI for discovering and booking services.',
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _passwordController,
@@ -312,7 +341,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
-                    child: Text(_isLoading ? 'Creating account...' : 'Sign up'),
+                    child: Text(
+                      _isLoading
+                          ? 'Creating account...'
+                          : _isTeenSigner
+                              ? 'Save child info & pass to parent'
+                              : 'Sign up',
+                    ),
                   ),
                 ],
               ),
