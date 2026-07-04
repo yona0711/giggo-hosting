@@ -12,6 +12,9 @@ admin.initializeApp();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const CREATE_TOKEN_MAX_ATTEMPTS = 10;
 const APPROVE_MAX_ATTEMPTS = 10;
+const API_PROVIDER_MAX_ATTEMPTS = 20;
+const API_PAYMENT_SETUP_MAX_ATTEMPTS = 12;
+const API_ESCROW_MAX_ATTEMPTS = 30;
 
 function sha256(input) {
   return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
@@ -34,9 +37,10 @@ function getRequestIp(req) {
   return String(req.ip || req.connection?.remoteAddress || 'unknown').trim();
 }
 
-async function enforceRateLimit({ req, endpoint, maxAttempts }) {
+async function enforceRateLimit({ req, endpoint, maxAttempts, identifier }) {
   const ip = getRequestIp(req);
-  const key = sha256(`${endpoint}:${ip}`);
+  const identity = String(identifier || ip).trim();
+  const key = sha256(`${endpoint}:${identity}:${ip}`);
   const ref = admin.firestore().collection('_rateLimits').doc(key);
   const nowMillis = Date.now();
   let blocked = false;
@@ -49,6 +53,7 @@ async function enforceRateLimit({ req, endpoint, maxAttempts }) {
       transaction.set(ref, {
         endpoint,
         ip,
+        identity,
         count: 1,
         resetAt: admin.firestore.Timestamp.fromMillis(
           nowMillis + RATE_LIMIT_WINDOW_MS,
@@ -72,6 +77,7 @@ async function enforceRateLimit({ req, endpoint, maxAttempts }) {
         {
           endpoint,
           ip,
+          identity,
           count: 1,
           resetAt: admin.firestore.Timestamp.fromMillis(
             nowMillis + RATE_LIMIT_WINDOW_MS,
@@ -377,6 +383,25 @@ function requireSameUser(res, decoded, userUid) {
   return true;
 }
 
+async function enforceApiRateLimit({ req, res, decoded, endpoint, maxAttempts }) {
+  const rateLimit = await enforceRateLimit({
+    req,
+    endpoint,
+    maxAttempts,
+    identifier: decoded?.uid,
+  });
+
+  if (rateLimit.blocked) {
+    res.status(429).json({
+      message: 'Too many attempts. Please try again later.',
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
+    return false;
+  }
+
+  return true;
+}
+
 async function upsertEscrowFromPaymentRecord(record) {
   if (!record || !record.bookingId) {
     return;
@@ -615,6 +640,17 @@ apiApp.post('/api/providers/connect-account', async (req, res) => {
   if (!decoded) {
     return;
   }
+  if (
+    !(await enforceApiRateLimit({
+      req,
+      res,
+      decoded,
+      endpoint: 'api.providers.connectAccount',
+      maxAttempts: API_PROVIDER_MAX_ATTEMPTS,
+    }))
+  ) {
+    return;
+  }
 
   const {
     providerUid,
@@ -716,6 +752,17 @@ apiApp.post('/api/providers/:providerUid/onboarding-link', async (req, res) => {
   if (!decoded) {
     return;
   }
+  if (
+    !(await enforceApiRateLimit({
+      req,
+      res,
+      decoded,
+      endpoint: 'api.providers.onboardingLink',
+      maxAttempts: API_PROVIDER_MAX_ATTEMPTS,
+    }))
+  ) {
+    return;
+  }
 
   const providerUid = String(req.params.providerUid || '').trim();
   if (!requireSameUser(res, decoded, providerUid)) {
@@ -763,6 +810,17 @@ apiApp.post('/api/providers/:providerUid/onboarding-link', async (req, res) => {
 apiApp.post('/api/payments/setup-card-session', async (req, res) => {
   const decoded = await verifyApiAuth(req, res);
   if (!decoded) {
+    return;
+  }
+  if (
+    !(await enforceApiRateLimit({
+      req,
+      res,
+      decoded,
+      endpoint: 'api.payments.setupCardSession',
+      maxAttempts: API_PAYMENT_SETUP_MAX_ATTEMPTS,
+    }))
+  ) {
     return;
   }
 
@@ -858,6 +916,17 @@ apiApp.get('/api/payments/setup-card-status/:userUid', async (req, res) => {
   if (!decoded) {
     return;
   }
+  if (
+    !(await enforceApiRateLimit({
+      req,
+      res,
+      decoded,
+      endpoint: 'api.payments.setupCardStatus',
+      maxAttempts: API_ESCROW_MAX_ATTEMPTS,
+    }))
+  ) {
+    return;
+  }
 
   if (!requireSameUser(res, decoded, req.params.userUid)) {
     return;
@@ -886,6 +955,17 @@ apiApp.get('/api/payments/setup-card-status/:userUid', async (req, res) => {
 apiApp.post('/api/payments/escrow-authorize', async (req, res) => {
   const decoded = await verifyApiAuth(req, res);
   if (!decoded) {
+    return;
+  }
+  if (
+    !(await enforceApiRateLimit({
+      req,
+      res,
+      decoded,
+      endpoint: 'api.payments.escrowAuthorize',
+      maxAttempts: API_ESCROW_MAX_ATTEMPTS,
+    }))
+  ) {
     return;
   }
 
@@ -1022,6 +1102,17 @@ apiApp.post('/api/payments/escrow-authorize', async (req, res) => {
 apiApp.post('/api/payments/escrow-release', async (req, res) => {
   const decoded = await verifyApiAuth(req, res);
   if (!decoded) {
+    return;
+  }
+  if (
+    !(await enforceApiRateLimit({
+      req,
+      res,
+      decoded,
+      endpoint: 'api.payments.escrowRelease',
+      maxAttempts: API_ESCROW_MAX_ATTEMPTS,
+    }))
+  ) {
     return;
   }
 
