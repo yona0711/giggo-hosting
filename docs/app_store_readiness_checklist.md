@@ -104,7 +104,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] Privacy Policy URL: `https://giggo-8a302.web.app/privacy`.
 - [ ] Age rating questionnaire.
 - [ ] Demo/reviewer account credentials.
-- [ ] Review notes explaining parent approval, payments, moderation, and provider onboarding.
+- [x] Review notes explaining parent approval, payments, moderation, and provider onboarding: `docs/app_review_notes.md`.
 
 ## Final Review
 
@@ -113,4 +113,4 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [ ] No mock payment mode in production.
 - [ ] No debug banner or debug-only screens.
 - [ ] Backend is live during app review.
-- [ ] All non-obvious features are explained in review notes.
+- [x] All non-obvious features are explained in review notes.
