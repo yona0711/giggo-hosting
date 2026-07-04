@@ -47,7 +47,7 @@ class LegalInfoScreen extends StatelessWidget {
         (
           heading: 'Contact',
           body:
-              'For privacy or support questions, contact the Giggo support team. Replace this placeholder with the production support email before store submission.',
+              'For privacy or support questions, visit https://giggo-8a302.web.app/support. For account deletion instructions, visit https://giggo-8a302.web.app/delete-account.',
         ),
       ];
     }
@@ -79,9 +79,9 @@ class LegalInfoScreen extends StatelessWidget {
             'Users can report listings, stores, messages, or accounts. Giggo may review reports and take action including warnings, content removal, blocking, or account restrictions.',
       ),
       (
-        heading: 'Important placeholder',
+        heading: 'Legal review',
         body:
-            'These terms are starter app text for development and store-readiness work. Replace them with lawyer-reviewed production terms before public launch.',
+            'These terms describe the current Giggo app experience and should be reviewed with qualified legal counsel before a full public launch.',
       ),
     ];
   }

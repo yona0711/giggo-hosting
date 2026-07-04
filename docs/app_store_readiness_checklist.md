@@ -108,7 +108,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 
 ## Final Review
 
-- [ ] No placeholder support text remains.
+- [x] No placeholder support text remains.
 - [ ] No test Stripe keys in production.
 - [ ] No mock payment mode in production.
 - [ ] No debug banner or debug-only screens.
