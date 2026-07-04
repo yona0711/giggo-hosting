@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 enum PublicInfoType {
   support,
   deleteAccount,
+  safetyRules,
 }
 
 class PublicInfoScreen extends StatelessWidget {
@@ -19,6 +20,8 @@ class PublicInfoScreen extends StatelessWidget {
         return 'Giggo Support';
       case PublicInfoType.deleteAccount:
         return 'Delete Your Giggo Account';
+      case PublicInfoType.safetyRules:
+        return 'Giggo Safety Rules';
     }
   }
 
@@ -28,6 +31,8 @@ class PublicInfoScreen extends StatelessWidget {
         return Icons.support_agent_outlined;
       case PublicInfoType.deleteAccount:
         return Icons.delete_outline;
+      case PublicInfoType.safetyRules:
+        return Icons.health_and_safety_outlined;
     }
   }
 
@@ -67,6 +72,39 @@ class PublicInfoScreen extends StatelessWidget {
             heading: 'If Firebase asks you to sign in again',
             body:
                 'For security, account deletion can require a recent login. Log out, sign back in, and retry Delete account from Settings.',
+          ),
+        ];
+      case PublicInfoType.safetyRules:
+        return const [
+          (
+            heading: 'Respectful marketplace behavior',
+            body:
+                'Treat clients, providers, parents, and support reviewers with respect. Harassment, threats, hate, intimidation, sexual content involving minors, spam, impersonation, and misleading listings are not allowed.',
+          ),
+          (
+            heading: 'Accurate service posts',
+            body:
+                'Providers must describe services, prices, availability, locations, qualifications, and requirements honestly. Do not post services that are illegal, unsafe, adult-only, counterfeit, stolen, or outside your ability to complete.',
+          ),
+          (
+            heading: 'Payments and off-platform activity',
+            body:
+                'Use the payment and booking tools Giggo provides when they are available. Do not pressure users to share full card details, passwords, one-time codes, government IDs, or private banking information in chat.',
+          ),
+          (
+            heading: 'Minors and parent approval',
+            body:
+                'Users under 18 must use the parent approval flow when required. Parents or guardians are responsible for reviewing service requests and approving whether the minor may participate.',
+          ),
+          (
+            heading: 'Unsafe situations',
+            body:
+                'If a service situation feels unsafe, leave if you can and contact local emergency services first. Report the provider, client, message, listing, or store in Giggo so the account can be reviewed.',
+          ),
+          (
+            heading: 'Enforcement',
+            body:
+                'Giggo may remove content, limit visibility, block bookings, suspend accounts, or preserve records when needed to protect users, investigate disputes, prevent fraud, or follow legal requirements.',
           ),
         ];
     }

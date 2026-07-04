@@ -277,6 +277,9 @@ class _AppEntryScreen extends StatelessWidget {
         return const LegalInfoScreen(type: LegalInfoType.terms);
       case '/support':
         return const PublicInfoScreen(type: PublicInfoType.support);
+      case '/safety':
+      case '/community-rules':
+        return const PublicInfoScreen(type: PublicInfoType.safetyRules);
       case '/delete-account':
       case '/account-deletion':
         return const PublicInfoScreen(type: PublicInfoType.deleteAccount);
