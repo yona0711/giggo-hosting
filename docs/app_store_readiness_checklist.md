@@ -56,7 +56,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] In-app delete account flow exists.
 - [ ] Add re-authentication handling for account deletion when Firebase requires recent login.
 - [x] Add public deletion request web form or support flow.
-- [ ] Document data retention for payment, fraud, tax, and safety records.
+- [x] Document data retention for payment, fraud, tax, and safety records: `docs/data_retention_policy.md`.
 - [ ] Add export/download-my-data plan if required by operating regions.
 
 ## Production Backend
@@ -73,7 +73,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] Add rate limiting and abuse protection.
 - [x] Add server-side auth verification for protected API routes.
 - [ ] Add server logs, error tracking, and monitoring.
-- [ ] Add backups and data retention policy.
+- [x] Add backups and data retention policy: `docs/data_retention_policy.md`.
 - [ ] Add production environment variables and secret management.
 
 ## Mobile Release Build
