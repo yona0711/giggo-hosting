@@ -46,7 +46,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [ ] Add user suspension/restriction tooling.
 - [x] Add published community/safety rules: `https://giggo-8a302.web.app/safety`.
 - [ ] Add audit logs for minor bookings and parent approvals.
-- [ ] Add emergency/support escalation copy for unsafe service situations.
+- [x] Add emergency/support escalation copy for unsafe service situations.
 
 ## Accounts And Privacy
 

@@ -55,6 +55,16 @@ class PublicInfoScreen extends StatelessWidget {
             body:
                 'If a service situation feels unsafe, leave the situation and contact local emergency services first. You can also report providers, listings, stores, messages, or accounts inside Giggo for review.',
           ),
+          (
+            heading: 'Unsafe service escalation',
+            body:
+                'For immediate danger, call local emergency services before using Giggo support. After you are safe, report the booking, conversation, provider store, or account in the app and include the service name, date, location, and any messages that help explain what happened.',
+          ),
+          (
+            heading: 'What Giggo can review',
+            body:
+                'Giggo can review reports, messages, provider stores, listings, parent approval records, and payment or booking details when investigating unsafe behavior, fraud, harassment, or policy violations.',
+          ),
         ];
       case PublicInfoType.deleteAccount:
         return const [
