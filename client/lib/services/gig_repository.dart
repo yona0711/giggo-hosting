@@ -60,8 +60,9 @@ class PaymentSetupResult {
 class GigRepository {
   GigRepository({
     http.Client? httpClient,
-    this.baseUrl = 'http://localhost:4000',
+    String? baseUrl,
   })  : _httpClient = httpClient ?? http.Client(),
+        baseUrl = baseUrl ?? _defaultBaseUrl(),
         _auth = FirebaseAuth.instance,
         _firestore = FirebaseFirestore.instance;
 
@@ -73,6 +74,19 @@ class GigRepository {
       'https://us-central1-giggo-8a302.cloudfunctions.net/createTeenApprovalToken';
   static const String _approveTeenAccountUrl =
       'https://us-central1-giggo-8a302.cloudfunctions.net/approveTeenAccount';
+
+  static String _defaultBaseUrl() {
+    if (!kIsWeb) {
+      return 'http://localhost:4000';
+    }
+
+    final origin = Uri.base.origin;
+    if (origin.startsWith('http://localhost') ||
+        origin.startsWith('http://127.0.0.1')) {
+      return 'http://localhost:4000';
+    }
+    return origin;
+  }
 
   CollectionReference<Map<String, dynamic>> get _gigsCollection =>
       _firestore.collection('gigs');
