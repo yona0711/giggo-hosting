@@ -12,7 +12,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] Local development persistence added for Stripe records.
 - [x] Stripe mode no longer uses a hardcoded test payment method for escrow authorization.
 - [x] Optional Firestore server persistence driver added.
-- [ ] Deploy backend with `GIGGO_STORE_DRIVER=firestore` and Firebase Admin credentials.
+- [x] Deploy backend with Firestore persistence and Firebase Admin credentials through Firebase Functions.
 - [ ] Finalize saved-payment-method flow versus client-confirmed Stripe checkout/payment UI.
 - [ ] Choose destination charges or separate charges and transfers.
 - [ ] Implement real escrow release after service completion.
@@ -66,15 +66,15 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] Dockerfile added for backend deployment.
 - [x] Render blueprint added for backend deployment.
 - [x] Production CORS origin setting added.
-- [ ] Deploy backend to a production HTTPS host.
+- [x] Deploy backend to a production HTTPS host: `https://giggo-8a302.web.app/api/health`.
 - [x] Server can use Firestore-backed persistence for production.
-- [ ] Enable Firestore-backed persistence in the deployed backend.
-- [ ] Set `CORS_ORIGINS` on the deployed backend.
+- [x] Enable Firestore-backed persistence in the deployed backend.
+- [x] Set production CORS origin for the deployed backend.
 - [x] Add rate limiting and abuse protection.
 - [x] Add server-side auth verification for protected API routes.
 - [ ] Add server logs, error tracking, and monitoring.
 - [x] Add backups and data retention policy: `docs/data_retention_policy.md`.
-- [ ] Add production environment variables and secret management.
+- [x] Add production environment variables and secret management through Firebase Function secrets.
 
 ## Mobile Release Build
 
@@ -112,5 +112,5 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [ ] No test Stripe keys in production.
 - [ ] No mock payment mode in production.
 - [ ] No debug banner or debug-only screens.
-- [ ] Backend is live during app review.
+- [x] Backend is live during app review.
 - [x] All non-obvious features are explained in review notes.
