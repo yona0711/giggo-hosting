@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'app_theme_controller.dart';
 import 'firebase_options.dart';
 import 'screens/auth_gate_screen.dart';
+import 'screens/legal_info_screen.dart';
+import 'screens/public_info_screen.dart';
 import 'screens/service_public_page_screen.dart';
 import 'services/gig_repository.dart';
 
@@ -265,6 +267,21 @@ class _AppEntryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final path = Uri.base.path.toLowerCase();
+    switch (path) {
+      case '/privacy':
+      case '/privacy-policy':
+        return const LegalInfoScreen(type: LegalInfoType.privacy);
+      case '/terms':
+      case '/terms-of-service':
+        return const LegalInfoScreen(type: LegalInfoType.terms);
+      case '/support':
+        return const PublicInfoScreen(type: PublicInfoType.support);
+      case '/delete-account':
+      case '/account-deletion':
+        return const PublicInfoScreen(type: PublicInfoType.deleteAccount);
+    }
+
     final fragment = Uri.base.fragment;
     if (fragment.startsWith('/service/')) {
       final slug = fragment.replaceFirst('/service/', '').trim();

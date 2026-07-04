@@ -27,10 +27,10 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] In-app account deletion exists in Settings.
 - [ ] Replace starter policy text with lawyer-reviewed production Privacy Policy.
 - [ ] Replace starter terms with lawyer-reviewed production Terms of Service.
-- [ ] Publish public Privacy Policy URL.
-- [ ] Publish public Terms URL.
-- [ ] Publish public Support URL.
-- [ ] Publish public Account/Data Deletion URL for Google Play.
+- [x] Publish public Privacy Policy URL: `https://giggo-8a302.web.app/privacy`.
+- [x] Publish public Terms URL: `https://giggo-8a302.web.app/terms`.
+- [x] Publish public Support URL: `https://giggo-8a302.web.app/support`.
+- [x] Publish public Account/Data Deletion URL for Google Play: `https://giggo-8a302.web.app/delete-account`.
 - [ ] Add production support email and company/developer contact info.
 - [ ] Complete Apple App Privacy details.
 - [ ] Complete Google Play Data Safety form.
@@ -55,7 +55,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [x] Logout exists.
 - [x] In-app delete account flow exists.
 - [ ] Add re-authentication handling for account deletion when Firebase requires recent login.
-- [ ] Add public deletion request web form or support flow.
+- [x] Add public deletion request web form or support flow.
 - [ ] Document data retention for payment, fraud, tax, and safety records.
 - [ ] Add export/download-my-data plan if required by operating regions.
 
@@ -99,9 +99,9 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [ ] App screenshots for required Apple sizes.
 - [ ] App screenshots for Google Play.
 - [ ] App preview video if wanted.
-- [ ] Support URL.
+- [x] Support URL: `https://giggo-8a302.web.app/support`.
 - [ ] Marketing URL if wanted.
-- [ ] Privacy Policy URL.
+- [x] Privacy Policy URL: `https://giggo-8a302.web.app/privacy`.
 - [ ] Age rating questionnaire.
 - [ ] Demo/reviewer account credentials.
 - [ ] Review notes explaining parent approval, payments, moderation, and provider onboarding.
