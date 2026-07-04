@@ -71,7 +71,7 @@ This checklist tracks what is missing before submitting Giggo to the Apple App S
 - [ ] Enable Firestore-backed persistence in the deployed backend.
 - [ ] Set `CORS_ORIGINS` on the deployed backend.
 - [ ] Add rate limiting and abuse protection.
-- [ ] Add server-side auth verification for protected API routes.
+- [x] Add server-side auth verification for protected API routes.
 - [ ] Add server logs, error tracking, and monitoring.
 - [ ] Add backups and data retention policy.
 - [ ] Add production environment variables and secret management.

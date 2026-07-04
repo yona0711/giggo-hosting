@@ -368,6 +368,15 @@ class GigRepository {
     return fallback;
   }
 
+  Future<Map<String, String>> _apiJsonHeaders() async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final token = await _auth.currentUser?.getIdToken();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   Future<ProviderPayoutResult> ensureMyStripeConnectAccount() async {
     final uid = _auth.currentUser?.uid;
     final email = _auth.currentUser?.email;
@@ -382,7 +391,7 @@ class GigRepository {
       try {
         await _httpClient.post(
           Uri.parse('$baseUrl/api/providers/connect-account'),
-          headers: {'Content-Type': 'application/json'},
+          headers: await _apiJsonHeaders(),
           body: jsonEncode({
             'providerUid': uid,
             'email': email.trim().toLowerCase(),
@@ -396,7 +405,7 @@ class GigRepository {
     try {
       final response = await _httpClient.post(
         Uri.parse('$baseUrl/api/providers/connect-account'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _apiJsonHeaders(),
         body: jsonEncode({
           'providerUid': uid,
           'email': email.trim().toLowerCase(),
@@ -454,7 +463,7 @@ class GigRepository {
     try {
       final response = await _httpClient.post(
         Uri.parse('$baseUrl/api/providers/$uid/onboarding-link'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _apiJsonHeaders(),
         body: jsonEncode({
           'accountId': existingAccountId,
         }),
@@ -503,7 +512,7 @@ class GigRepository {
     try {
       final response = await _httpClient.post(
         Uri.parse('$baseUrl/api/payments/setup-card-session'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _apiJsonHeaders(),
         body: jsonEncode({
           'userUid': uid,
           'email': email.trim().toLowerCase(),
@@ -562,6 +571,7 @@ class GigRepository {
     try {
       final response = await _httpClient.get(
         Uri.parse('$baseUrl/api/payments/setup-card-status/$uid'),
+        headers: await _apiJsonHeaders(),
       );
 
       dynamic body;
@@ -614,7 +624,7 @@ class GigRepository {
     try {
       final response = await _httpClient.post(
         Uri.parse('$baseUrl/api/payments/escrow-authorize'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await _apiJsonHeaders(),
         body: jsonEncode({
           'amount': amount,
           'currency': 'usd',

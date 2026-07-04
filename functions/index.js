@@ -347,6 +347,36 @@ function paymentRecordRef(paymentIntentId) {
   return admin.firestore().collection('_paymentRecords').doc(paymentIntentId);
 }
 
+async function verifyApiAuth(req, res) {
+  const authHeader = String(req.headers.authorization || '');
+  if (!authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ message: 'Authorization token is required.' });
+    return null;
+  }
+
+  const idToken = authHeader.slice(7).trim();
+  if (!idToken) {
+    res.status(401).json({ message: 'Authorization token is required.' });
+    return null;
+  }
+
+  try {
+    return await admin.auth().verifyIdToken(idToken);
+  } catch (error) {
+    logger.warn('API auth verification failed', error);
+    res.status(401).json({ message: 'Invalid authorization token.' });
+    return null;
+  }
+}
+
+function requireSameUser(res, decoded, userUid) {
+  if (!decoded || !userUid || decoded.uid !== String(userUid).trim()) {
+    res.status(403).json({ message: 'You can only manage your own account.' });
+    return false;
+  }
+  return true;
+}
+
 async function upsertEscrowFromPaymentRecord(record) {
   if (!record || !record.bookingId) {
     return;
@@ -581,6 +611,11 @@ apiApp.get('/api/health', (_req, res) => {
 });
 
 apiApp.post('/api/providers/connect-account', async (req, res) => {
+  const decoded = await verifyApiAuth(req, res);
+  if (!decoded) {
+    return;
+  }
+
   const {
     providerUid,
     email,
@@ -590,6 +625,10 @@ apiApp.post('/api/providers/connect-account', async (req, res) => {
 
   if (!providerUid || !email) {
     res.status(400).json({ message: 'providerUid and email are required.' });
+    return;
+  }
+
+  if (!requireSameUser(res, decoded, providerUid)) {
     return;
   }
 
@@ -673,7 +712,16 @@ apiApp.post('/api/providers/connect-account', async (req, res) => {
 });
 
 apiApp.post('/api/providers/:providerUid/onboarding-link', async (req, res) => {
+  const decoded = await verifyApiAuth(req, res);
+  if (!decoded) {
+    return;
+  }
+
   const providerUid = String(req.params.providerUid || '').trim();
+  if (!requireSameUser(res, decoded, providerUid)) {
+    return;
+  }
+
   const requestedAccountId = req.body?.accountId;
   const providerSnapshot = await providerAccountRef(providerUid).get();
   const provider = providerSnapshot.data();
@@ -713,6 +761,11 @@ apiApp.post('/api/providers/:providerUid/onboarding-link', async (req, res) => {
 });
 
 apiApp.post('/api/payments/setup-card-session', async (req, res) => {
+  const decoded = await verifyApiAuth(req, res);
+  if (!decoded) {
+    return;
+  }
+
   const {
     userUid,
     email,
@@ -723,6 +776,10 @@ apiApp.post('/api/payments/setup-card-session', async (req, res) => {
 
   if (!userUid || !email) {
     res.status(400).json({ message: 'userUid and email are required.' });
+    return;
+  }
+
+  if (!requireSameUser(res, decoded, userUid)) {
     return;
   }
 
@@ -797,6 +854,15 @@ apiApp.post('/api/payments/setup-card-session', async (req, res) => {
 });
 
 apiApp.get('/api/payments/setup-card-status/:userUid', async (req, res) => {
+  const decoded = await verifyApiAuth(req, res);
+  if (!decoded) {
+    return;
+  }
+
+  if (!requireSameUser(res, decoded, req.params.userUid)) {
+    return;
+  }
+
   const snapshot = await paymentCustomerRef(req.params.userUid).get();
   const customer = snapshot.data();
   if (!customer) {
@@ -818,6 +884,11 @@ apiApp.get('/api/payments/setup-card-status/:userUid', async (req, res) => {
 });
 
 apiApp.post('/api/payments/escrow-authorize', async (req, res) => {
+  const decoded = await verifyApiAuth(req, res);
+  if (!decoded) {
+    return;
+  }
+
   const {
     amount,
     currency = 'usd',
@@ -842,6 +913,10 @@ apiApp.post('/api/payments/escrow-authorize', async (req, res) => {
       message:
         'amount, bookingId, serviceTitle, clientUid, and providerUid are required.',
     });
+    return;
+  }
+
+  if (!requireSameUser(res, decoded, clientUid)) {
     return;
   }
 
@@ -945,9 +1020,25 @@ apiApp.post('/api/payments/escrow-authorize', async (req, res) => {
 });
 
 apiApp.post('/api/payments/escrow-release', async (req, res) => {
+  const decoded = await verifyApiAuth(req, res);
+  if (!decoded) {
+    return;
+  }
+
   const { paymentIntentId } = req.body || {};
   if (!paymentIntentId) {
     res.status(400).json({ message: 'paymentIntentId is required.' });
+    return;
+  }
+
+  const recordSnapshot = await paymentRecordRef(paymentIntentId).get();
+  const record = recordSnapshot.data();
+  if (
+    record?.providerUid &&
+    record.providerUid !== decoded.uid &&
+    record.clientUid !== decoded.uid
+  ) {
+    res.status(403).json({ message: 'You can only manage your own payments.' });
     return;
   }
 
